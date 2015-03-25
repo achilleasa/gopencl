@@ -19,7 +19,6 @@ import (
 	"unsafe"
 )
 
-//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clinit.html
 func init() {
 	mochHolder = make(map[*memObjectCallbackHolder]struct{})
 	pobchHolder = make(map[*programObjectBuildCompleteHolder]struct{})
@@ -402,8 +401,7 @@ func GetPlatformIDs(numentries uint32, ids *PlatformID, numplatform *uint32) int
 	return int32(C.clGetPlatformIDs(C.cl_uint(numentries), (*C.cl_platform_id)(unsafe.Pointer(ids)), (*C.cl_uint)(numplatform)))
 }
 
-//par
-//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clGetPlatformInfoamName.html  is one of [CL_PLATFORM_PROFILE,CL_PLATFORM_VERSION,CL_PLATFORM_NAME,CL_PLATFORM_VENDOR,CL_PLATFORM_EXTENSIONS]
+//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clGetPlatformInfo.html
 func GetPlatformInfo(pid PlatformID, paramName uint32, paramValueSize uint64, data unsafe.Pointer, paramValueSizeRet *uint64) int32 {
 	return int32(C.clGetPlatformInfo(pid, C.cl_platform_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
 }
@@ -424,8 +422,7 @@ func GetDeviceInfo(did DeviceId, paramName uint32, paramValueSize uint64, data u
 	return int32(C.clGetDeviceInfo(did, C.cl_device_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
 }
 
-//idk
-//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clCreateSubDevices.html  if properties is the right type
+//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clCreateSubDevices.html
 func CreateSubDevices(did DeviceId, properties *uint64, numDevices uint32, devices *DeviceId, numDevicesRet *uint32) int32 {
 	return int32(C.clCreateSubDevices(did, (*C.cl_device_partition_property)(unsafe.Pointer(properties)), C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.cl_uint)(numDevicesRet)))
 }
@@ -457,8 +454,7 @@ func contextErrorCallback(errinfo *C.char, privateinfo unsafe.Pointer, cb C.size
 	//do something
 }
 
-//sam
-//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clCreateContexte.html  issue as CreateSubDevices
+//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clCreateContext.html
 func CreateContext(properties *uint64, numDevices uint32, devices *DeviceId, errcb func(string, unsafe.Pointer, uint64, unsafe.Pointer), userdata interface{}, errcode *int32) *Context {
 	ctx := Context{nil, errcb, userdata}
 	ctx.clContext = C.clCreateContext((*C.cl_context_properties)(unsafe.Pointer(properties)),
