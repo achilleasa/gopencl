@@ -25,8 +25,49 @@ func init() {
 	poccHolder = make(map[*programObjectCompileCompleteHolder]struct{})
 }
 
-const (
-	/* Error Codes */
+type Bool uint32
+type PlatformInfo uint32
+type DeviceType uint32
+type DeviceInfo uint32
+type DeviceFpConfig uint32
+type DeviceMemCacheType uint32
+type DeviceLocalMemType uint32
+type DeviceExecCapabilities uint32
+type CommandQueueProperties uint32
+type ContextInfo uint32
+type ContextProperties uint32
+type DevicePartitionProperty uint32
+type DeviceAffinityDomain uint32
+type CommandQueueInfo uint32
+type MemFlags uint32
+type MemMigrationFlags uint32
+type ChannelOrder uint32
+type ChannelType uint32
+type MemObjectType uint32
+type MemInfo uint32
+type ImageInfo uint32
+type AddressingMode uint32
+type FilterMode uint32
+type SamplerInfo uint32
+type MapFlags uint32
+type ProgramInfo uint32
+type ProgramBuildInfo uint32
+type ProgramBinaryType uint32
+type BuildStatus uint32
+type KernelInfo uint32
+type KernelArgInfo uint32
+type KernelArgAddressQualifier uint32
+type KernelArgAccessQualifier uint32
+type KernelArgTypeQualifer uint32
+type KernelWorkGroupInfo uint32
+type EventInfo uint32
+type CommandType uint32
+type BufferCreateType uint32
+type ProfilingInfo uint32
+
+const ()
+
+const ( /* Error Codes */
 	SUCCESS                                   = C.CL_SUCCESS
 	DEVICE_NOT_FOUND                          = C.CL_DEVICE_NOT_FOUND
 	DEVICE_NOT_AVAILABLE                      = C.CL_DEVICE_NOT_AVAILABLE
@@ -87,34 +128,39 @@ const (
 	INVALID_COMPILER_OPTIONS        = C.CL_INVALID_COMPILER_OPTIONS
 	INVALID_LINKER_OPTIONS          = C.CL_INVALID_LINKER_OPTIONS
 	INVALID_DEVICE_PARTITION_COUNT  = C.CL_INVALID_DEVICE_PARTITION_COUNT
+)
 
-	/* OpenCL Version */
+const ( /* OpenCL Version */
 	VERSION_1_0 = C.CL_VERSION_1_0
 	VERSION_1_1 = C.CL_VERSION_1_1
 	VERSION_1_2 = C.CL_VERSION_1_2
+)
 
-	/* cl_bool */
+const ( /* cl_bool */
 	FALSE        = C.CL_FALSE
 	TRUE         = C.CL_TRUE
 	BLOCKING     = C.CL_BLOCKING
 	NON_BLOCKING = C.CL_NON_BLOCKING
+)
 
-	/* cl_platform_info */
+const ( /* cl_platform_info */
 	PLATFORM_PROFILE    = C.CL_PLATFORM_PROFILE
 	PLATFORM_VERSION    = C.CL_PLATFORM_VERSION
 	PLATFORM_NAME       = C.CL_PLATFORM_NAME
 	PLATFORM_VENDOR     = C.CL_PLATFORM_VENDOR
 	PLATFORM_EXTENSIONS = C.CL_PLATFORM_EXTENSIONS
+)
 
-	/* cl_device_type - bitfield */
+const ( /* cl_device_type - bitfield */
 	DEVICE_TYPE_DEFAULT     = C.CL_DEVICE_TYPE_DEFAULT
 	DEVICE_TYPE_CPU         = C.CL_DEVICE_TYPE_CPU
 	DEVICE_TYPE_GPU         = C.CL_DEVICE_TYPE_GPU
 	DEVICE_TYPE_ACCELERATOR = C.CL_DEVICE_TYPE_ACCELERATOR
 	DEVICE_TYPE_CUSTOM      = C.CL_DEVICE_TYPE_CUSTOM
 	DEVICE_TYPE_ALL         = C.CL_DEVICE_TYPE_ALL
+)
 
-	/* cl_device_info */
+const ( /* cl_device_info */
 	DEVICE_TYPE                          = C.CL_DEVICE_TYPE
 	DEVICE_VENDOR_ID                     = C.CL_DEVICE_VENDOR_ID
 	DEVICE_MAX_COMPUTE_UNITS             = C.CL_DEVICE_MAX_COMPUTE_UNITS
@@ -166,7 +212,9 @@ const (
 	DEVICE_EXTENSIONS                    = C.CL_DEVICE_EXTENSIONS
 	DEVICE_PLATFORM                      = C.CL_DEVICE_PLATFORM
 	DEVICE_DOUBLE_FP_CONFIG              = C.CL_DEVICE_DOUBLE_FP_CONFIG
-	/* 0x1033 reserved for CL_DEVICE_HALF_FP_CONFIG */
+)
+
+const ( /* 0x1033 reserved for CL_DEVICE_HALF_FP_CONFIG */
 	DEVICE_PREFERRED_VECTOR_WIDTH_HALF  = C.CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF
 	DEVICE_HOST_UNIFIED_MEMORY          = C.CL_DEVICE_HOST_UNIFIED_MEMORY
 	DEVICE_NATIVE_VECTOR_WIDTH_CHAR     = C.CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR
@@ -191,8 +239,9 @@ const (
 	DEVICE_PRINTF_BUFFER_SIZE           = C.CL_DEVICE_PRINTF_BUFFER_SIZE
 	DEVICE_IMAGE_PITCH_ALIGNMENT        = C.CL_DEVICE_IMAGE_PITCH_ALIGNMENT
 	DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT = C.CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT
+)
 
-	/* cl_device_fp_config - bitfield */
+const ( /* cl_device_fp_config - bitfield */
 	FP_DENORM                        = C.CL_FP_DENORM
 	FP_INF_NAN                       = C.CL_FP_INF_NAN
 	FP_ROUND_TO_NEAREST              = C.CL_FP_ROUND_TO_NEAREST
@@ -201,55 +250,65 @@ const (
 	FP_FMA                           = C.CL_FP_FMA
 	FP_SOFT_FLOAT                    = C.CL_FP_SOFT_FLOAT
 	FP_CORRECTLY_ROUNDED_DIVIDE_SQRT = C.CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT
+)
 
-	/* cl_device_mem_cache_type */
+const ( /* cl_device_mem_cache_type */
 	NONE             = C.CL_NONE
 	READ_ONLY_CACHE  = C.CL_READ_ONLY_CACHE
 	READ_WRITE_CACHE = C.CL_READ_WRITE_CACHE
+)
 
-	/* cl_device_local_mem_type */
+const ( /* cl_device_local_mem_type */
 	LOCAL  = C.CL_LOCAL
 	GLOBAL = C.CL_GLOBAL
+)
 
-	/* cl_device_exec_capabilities - bitfield */
+const ( /* cl_device_exec_capabilities - bitfield */
 	EXEC_KERNEL        = C.CL_EXEC_KERNEL
 	EXEC_NATIVE_KERNEL = C.CL_EXEC_NATIVE_KERNEL
+)
 
-	/* cl_command_queue_properties - bitfield */
+const ( /* cl_command_queue_properties - bitfield */
 	QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE = C.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
 	QUEUE_PROFILING_ENABLE              = C.CL_QUEUE_PROFILING_ENABLE
+)
 
-	/* cl_context_info  */
+const ( /* cl_context_info  */
 	CONTEXT_REFERENCE_COUNT = C.CL_CONTEXT_REFERENCE_COUNT
 	CONTEXT_DEVICES         = C.CL_CONTEXT_DEVICES
 	CONTEXT_PROPERTIES      = C.CL_CONTEXT_PROPERTIES
 	CONTEXT_NUM_DEVICES     = C.CL_CONTEXT_NUM_DEVICES
+)
 
-	/* cl_context_properties */
+const ( /* cl_context_properties */
 	CONTEXT_PLATFORM          = C.CL_CONTEXT_PLATFORM
 	CONTEXT_INTEROP_USER_SYNC = C.CL_CONTEXT_INTEROP_USER_SYNC
+)
 
-	/* cl_device_partition_property */
+const ( /* cl_device_partition_property */
 	DEVICE_PARTITION_EQUALLY            = C.CL_DEVICE_PARTITION_EQUALLY
 	DEVICE_PARTITION_BY_COUNTS          = C.CL_DEVICE_PARTITION_BY_COUNTS
 	DEVICE_PARTITION_BY_COUNTS_LIST_END = C.CL_DEVICE_PARTITION_BY_COUNTS_LIST_END
 	DEVICE_PARTITION_BY_AFFINITY_DOMAIN = C.CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN
+)
 
-	/* cl_device_affinity_domain */
+const ( /* cl_device_affinity_domain */
 	DEVICE_AFFINITY_DOMAIN_NUMA               = C.CL_DEVICE_AFFINITY_DOMAIN_NUMA
 	DEVICE_AFFINITY_DOMAIN_L4_CACHE           = C.CL_DEVICE_AFFINITY_DOMAIN_L4_CACHE
 	DEVICE_AFFINITY_DOMAIN_L3_CACHE           = C.CL_DEVICE_AFFINITY_DOMAIN_L3_CACHE
 	DEVICE_AFFINITY_DOMAIN_L2_CACHE           = C.CL_DEVICE_AFFINITY_DOMAIN_L2_CACHE
 	DEVICE_AFFINITY_DOMAIN_L1_CACHE           = C.CL_DEVICE_AFFINITY_DOMAIN_L1_CACHE
 	DEVICE_AFFINITY_DOMAIN_NEXT_PARTITIONABLE = C.CL_DEVICE_AFFINITY_DOMAIN_NEXT_PARTITIONABLE
+)
 
-	/* cl_command_queue_info */
+const ( /* cl_command_queue_info */
 	QUEUE_CONTEXT         = C.CL_QUEUE_CONTEXT
 	QUEUE_DEVICE          = C.CL_QUEUE_DEVICE
 	QUEUE_REFERENCE_COUNT = C.CL_QUEUE_REFERENCE_COUNT
 	QUEUE_PROPERTIES      = C.CL_QUEUE_PROPERTIES
+)
 
-	/* cl_mem_flags - bitfield */
+const ( /* cl_mem_flags - bitfield */
 	MEM_READ_WRITE     = C.CL_MEM_READ_WRITE
 	MEM_WRITE_ONLY     = C.CL_MEM_WRITE_ONLY
 	MEM_READ_ONLY      = C.CL_MEM_READ_ONLY
@@ -260,12 +319,14 @@ const (
 	MEM_HOST_WRITE_ONLY = C.CL_MEM_HOST_WRITE_ONLY
 	MEM_HOST_READ_ONLY  = C.CL_MEM_HOST_READ_ONLY
 	MEM_HOST_NO_ACCESS  = C.CL_MEM_HOST_NO_ACCESS
+)
 
-	/* cl_mem_migration_flags - bitfield */
+const ( /* cl_mem_migration_flags - bitfield */
 	MIGRATE_MEM_OBJECT_HOST              = C.CL_MIGRATE_MEM_OBJECT_HOST
 	MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED = C.CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED
+)
 
-	/* cl_channel_order */
+const ( /* cl_channel_order */
 	R             = C.CL_R
 	A             = C.CL_A
 	RG            = C.CL_RG
@@ -281,8 +342,9 @@ const (
 	RGBx          = C.CL_RGBx
 	DEPTH         = C.CL_DEPTH
 	DEPTH_STENCIL = C.CL_DEPTH_STENCIL
+)
 
-	/* cl_channel_type */
+const ( /* cl_channel_type */
 	SNORM_INT8       = C.CL_SNORM_INT8
 	SNORM_INT16      = C.CL_SNORM_INT16
 	UNORM_INT8       = C.CL_UNORM_INT8
@@ -299,8 +361,9 @@ const (
 	HALF_FLOAT       = C.CL_HALF_FLOAT
 	FLOAT            = C.CL_FLOAT
 	UNORM_INT24      = C.CL_UNORM_INT24
+)
 
-	/* cl_mem_object_type */
+const ( /* cl_mem_object_type */
 	MEM_OBJECT_BUFFER         = C.CL_MEM_OBJECT_BUFFER
 	MEM_OBJECT_IMAGE2D        = C.CL_MEM_OBJECT_IMAGE2D
 	MEM_OBJECT_IMAGE3D        = C.CL_MEM_OBJECT_IMAGE3D
@@ -308,8 +371,9 @@ const (
 	MEM_OBJECT_IMAGE1D        = C.CL_MEM_OBJECT_IMAGE1D
 	MEM_OBJECT_IMAGE1D_ARRAY  = C.CL_MEM_OBJECT_IMAGE1D_ARRAY
 	MEM_OBJECT_IMAGE1D_BUFFER = C.CL_MEM_OBJECT_IMAGE1D_BUFFER
+)
 
-	/* cl_mem_info */
+const ( /* cl_mem_info */
 	MEM_TYPE                 = C.CL_MEM_TYPE
 	MEM_FLAGS                = C.CL_MEM_FLAGS
 	MEM_SIZE                 = C.CL_MEM_SIZE
@@ -319,8 +383,9 @@ const (
 	MEM_CONTEXT              = C.CL_MEM_CONTEXT
 	MEM_ASSOCIATED_MEMOBJECT = C.CL_MEM_ASSOCIATED_MEMOBJECT
 	MEM_OFFSET               = C.CL_MEM_OFFSET
+)
 
-	/* cl_image_info */
+const ( /* cl_image_info */
 	IMAGE_FORMAT         = C.CL_IMAGE_FORMAT
 	IMAGE_ELEMENT_SIZE   = C.CL_IMAGE_ELEMENT_SIZE
 	IMAGE_ROW_PITCH      = C.CL_IMAGE_ROW_PITCH
@@ -332,31 +397,36 @@ const (
 	IMAGE_BUFFER         = C.CL_IMAGE_BUFFER
 	IMAGE_NUM_MIP_LEVELS = C.CL_IMAGE_NUM_MIP_LEVELS
 	IMAGE_NUM_SAMPLES    = C.CL_IMAGE_NUM_SAMPLES
+)
 
-	/* cl_addressing_mode */
+const ( /* cl_addressing_mode */
 	ADDRESS_NONE            = C.CL_ADDRESS_NONE
 	ADDRESS_CLAMP_TO_EDGE   = C.CL_ADDRESS_CLAMP_TO_EDGE
 	ADDRESS_CLAMP           = C.CL_ADDRESS_CLAMP
 	ADDRESS_REPEAT          = C.CL_ADDRESS_REPEAT
 	ADDRESS_MIRRORED_REPEAT = C.CL_ADDRESS_MIRRORED_REPEAT
+)
 
-	/* cl_filter_mode */
+const ( /* cl_filter_mode */
 	FILTER_NEAREST = C.CL_FILTER_NEAREST
 	FILTER_LINEAR  = C.CL_FILTER_LINEAR
+)
 
-	/* cl_sampler_info */
+const ( /* cl_sampler_info */
 	SAMPLER_REFERENCE_COUNT   = C.CL_SAMPLER_REFERENCE_COUNT
 	SAMPLER_CONTEXT           = C.CL_SAMPLER_CONTEXT
 	SAMPLER_NORMALIZED_COORDS = C.CL_SAMPLER_NORMALIZED_COORDS
 	SAMPLER_ADDRESSING_MODE   = C.CL_SAMPLER_ADDRESSING_MODE
 	SAMPLER_FILTER_MODE       = C.CL_SAMPLER_FILTER_MODE
+)
 
-	/* cl_map_flags - bitfield */
+const ( /* cl_map_flags - bitfield */
 	MAP_READ                    = C.CL_MAP_READ
 	MAP_WRITE                   = C.CL_MAP_WRITE
 	MAP_WRITE_INVALIDATE_REGION = C.CL_MAP_WRITE_INVALIDATE_REGION
+)
 
-	/* cl_program_info */
+const ( /* cl_program_info */
 	PROGRAM_REFERENCE_COUNT = C.CL_PROGRAM_REFERENCE_COUNT
 	PROGRAM_CONTEXT         = C.CL_PROGRAM_CONTEXT
 	PROGRAM_NUM_DEVICES     = C.CL_PROGRAM_NUM_DEVICES
@@ -366,74 +436,85 @@ const (
 	PROGRAM_BINARIES        = C.CL_PROGRAM_BINARIES
 	PROGRAM_NUM_KERNELS     = C.CL_PROGRAM_NUM_KERNELS
 	PROGRAM_KERNEL_NAMES    = C.CL_PROGRAM_KERNEL_NAMES
+)
 
-	/* cl_program_build_info */
+const ( /* cl_program_build_info */
 	PROGRAM_BUILD_STATUS  = C.CL_PROGRAM_BUILD_STATUS
 	PROGRAM_BUILD_OPTIONS = C.CL_PROGRAM_BUILD_OPTIONS
 	PROGRAM_BUILD_LOG     = C.CL_PROGRAM_BUILD_LOG
 	PROGRAM_BINARY_TYPE   = C.CL_PROGRAM_BINARY_TYPE
+)
 
-	/* cl_program_binary_type */
+const ( /* cl_program_binary_type */
 	PROGRAM_BINARY_TYPE_NONE            = C.CL_PROGRAM_BINARY_TYPE_NONE
 	PROGRAM_BINARY_TYPE_COMPILED_OBJECT = C.CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT
 	PROGRAM_BINARY_TYPE_LIBRARY         = C.CL_PROGRAM_BINARY_TYPE_LIBRARY
 	PROGRAM_BINARY_TYPE_EXECUTABLE      = C.CL_PROGRAM_BINARY_TYPE_EXECUTABLE
+)
 
-	/* cl_build_status */
+const ( /* cl_build_status */
 	BUILD_SUCCESS     = C.CL_BUILD_SUCCESS
 	BUILD_NONE        = C.CL_BUILD_NONE
 	BUILD_ERROR       = C.CL_BUILD_ERROR
 	BUILD_IN_PROGRESS = C.CL_BUILD_IN_PROGRESS
+)
 
-	/* cl_kernel_info */
+const ( /* cl_kernel_info */
 	KERNEL_FUNCTION_NAME   = C.CL_KERNEL_FUNCTION_NAME
 	KERNEL_NUM_ARGS        = C.CL_KERNEL_NUM_ARGS
 	KERNEL_REFERENCE_COUNT = C.CL_KERNEL_REFERENCE_COUNT
 	KERNEL_CONTEXT         = C.CL_KERNEL_CONTEXT
 	KERNEL_PROGRAM         = C.CL_KERNEL_PROGRAM
 	KERNEL_ATTRIBUTES      = C.CL_KERNEL_ATTRIBUTES
+)
 
-	/* cl_kernel_arg_info */
+const ( /* cl_kernel_arg_info */
 	KERNEL_ARG_ADDRESS_QUALIFIER = C.CL_KERNEL_ARG_ADDRESS_QUALIFIER
 	KERNEL_ARG_ACCESS_QUALIFIER  = C.CL_KERNEL_ARG_ACCESS_QUALIFIER
 	KERNEL_ARG_TYPE_NAME         = C.CL_KERNEL_ARG_TYPE_NAME
 	KERNEL_ARG_TYPE_QUALIFIER    = C.CL_KERNEL_ARG_TYPE_QUALIFIER
 	KERNEL_ARG_NAME              = C.CL_KERNEL_ARG_NAME
+)
 
-	/* cl_kernel_arg_address_qualifier */
+const ( /* cl_kernel_arg_address_qualifier */
 	KERNEL_ARG_ADDRESS_GLOBAL   = C.CL_KERNEL_ARG_ADDRESS_GLOBAL
 	KERNEL_ARG_ADDRESS_LOCAL    = C.CL_KERNEL_ARG_ADDRESS_LOCAL
 	KERNEL_ARG_ADDRESS_CONSTANT = C.CL_KERNEL_ARG_ADDRESS_CONSTANT
 	KERNEL_ARG_ADDRESS_PRIVATE  = C.CL_KERNEL_ARG_ADDRESS_PRIVATE
+)
 
-	/* cl_kernel_arg_access_qualifier */
+const ( /* cl_kernel_arg_access_qualifier */
 	KERNEL_ARG_ACCESS_READ_ONLY  = C.CL_KERNEL_ARG_ACCESS_READ_ONLY
 	KERNEL_ARG_ACCESS_WRITE_ONLY = C.CL_KERNEL_ARG_ACCESS_WRITE_ONLY
 	KERNEL_ARG_ACCESS_READ_WRITE = C.CL_KERNEL_ARG_ACCESS_READ_WRITE
 	KERNEL_ARG_ACCESS_NONE       = C.CL_KERNEL_ARG_ACCESS_NONE
+)
 
-	/* cl_kernel_arg_type_qualifer */
+const ( /* cl_kernel_arg_type_qualifer */
 	KERNEL_ARG_TYPE_NONE     = C.CL_KERNEL_ARG_TYPE_NONE
 	KERNEL_ARG_TYPE_CONST    = C.CL_KERNEL_ARG_TYPE_CONST
 	KERNEL_ARG_TYPE_RESTRICT = C.CL_KERNEL_ARG_TYPE_RESTRICT
 	KERNEL_ARG_TYPE_VOLATILE = C.CL_KERNEL_ARG_TYPE_VOLATILE
+)
 
-	/* cl_kernel_work_group_info */
+const ( /* cl_kernel_work_group_info */
 	KERNEL_WORK_GROUP_SIZE                    = C.CL_KERNEL_WORK_GROUP_SIZE
 	KERNEL_COMPILE_WORK_GROUP_SIZE            = C.CL_KERNEL_COMPILE_WORK_GROUP_SIZE
 	KERNEL_LOCAL_MEM_SIZE                     = C.CL_KERNEL_LOCAL_MEM_SIZE
 	KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE = C.CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE
 	KERNEL_PRIVATE_MEM_SIZE                   = C.CL_KERNEL_PRIVATE_MEM_SIZE
 	KERNEL_GLOBAL_WORK_SIZE                   = C.CL_KERNEL_GLOBAL_WORK_SIZE
+)
 
-	/* cl_event_info  */
+const ( /* cl_event_info  */
 	EVENT_COMMAND_QUEUE            = C.CL_EVENT_COMMAND_QUEUE
 	EVENT_COMMAND_TYPE             = C.CL_EVENT_COMMAND_TYPE
 	EVENT_REFERENCE_COUNT          = C.CL_EVENT_REFERENCE_COUNT
 	EVENT_COMMAND_EXECUTION_STATUS = C.CL_EVENT_COMMAND_EXECUTION_STATUS
 	EVENT_CONTEXT                  = C.CL_EVENT_CONTEXT
+)
 
-	/* cl_command_type */
+const ( /* cl_command_type */
 	COMMAND_NDRANGE_KERNEL       = C.CL_COMMAND_NDRANGE_KERNEL
 	COMMAND_TASK                 = C.CL_COMMAND_TASK
 	COMMAND_NATIVE_KERNEL        = C.CL_COMMAND_NATIVE_KERNEL
@@ -459,17 +540,20 @@ const (
 	COMMAND_MIGRATE_MEM_OBJECTS  = C.CL_COMMAND_MIGRATE_MEM_OBJECTS
 	COMMAND_FILL_BUFFER          = C.CL_COMMAND_FILL_BUFFER
 	COMMAND_FILL_IMAGE           = C.CL_COMMAND_FILL_IMAGE
+)
 
-	/* command execution status */
+const ( /* command execution status */
 	COMPLETE  = C.CL_COMPLETE
 	RUNNING   = C.CL_RUNNING
 	SUBMITTED = C.CL_SUBMITTED
 	QUEUED    = C.CL_QUEUED
+)
 
-	/* cl_buffer_create_type  */
+const ( /* cl_buffer_create_type  */
 	BUFFER_CREATE_TYPE_REGION = C.CL_BUFFER_CREATE_TYPE_REGION
+)
 
-	/* cl_profiling_info  */
+const ( /* cl_profiling_info  */
 	PROFILING_COMMAND_QUEUED = C.CL_PROFILING_COMMAND_QUEUED
 	PROFILING_COMMAND_SUBMIT = C.CL_PROFILING_COMMAND_SUBMIT
 	PROFILING_COMMAND_START  = C.CL_PROFILING_COMMAND_START
@@ -1110,36 +1194,47 @@ func EnqueueBarrierWithWaitList(cq CommandQueue, num_events_in_wait_list uint32,
 ===================================================Extension functions Api=========================================
 =================================================================================================================*/
 
+//see https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clGetExtensionFunctionAddressForPlatform.html
 func GetExtensionFunctionAddressForPlatform(platform PlatformID, func_name *int8) unsafe.Pointer {
 	return unsafe.Pointer(C.clGetExtensionFunctionAddressForPlatform(platform, (*C.char)(func_name)))
 }
 
-// Deprecated OpenCL 1.1 APIs
-
+//Deprecated OpenCL 1.1 APIs
+//see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clCreateImage2D.html
 func CreateImage2D(context Context, flags uint32, image_format *ImageFormat, image_width uint64, image_height uint64, image_row_pitch uint64, host_ptr unsafe.Pointer, errcode_ret *int32) Mem {
 	return Mem(C.clCreateImage2D(context.clContext, C.cl_mem_flags(flags), (*C.cl_image_format)(image_format.toC()), C.size_t(image_width), C.size_t(image_height), C.size_t(image_row_pitch), host_ptr, (*C.cl_int)(errcode_ret)))
 }
 
+//Deprecated OpenCL 1.1 APIs
+//see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clCreateImage3D.html
 func CreateImage3D(context Context, flags uint32, image_format *ImageFormat, image_width uint64, image_height uint64, image_depth uint64, image_row_pitch uint64, image_slice_pitch uint64, host_ptr unsafe.Pointer, errcode_ret *int32) Mem {
 	return Mem(C.clCreateImage3D(context.clContext, C.cl_mem_flags(flags), (*C.cl_image_format)(image_format.toC()), C.size_t(image_width), C.size_t(image_height), C.size_t(image_depth), C.size_t(image_row_pitch), C.size_t(image_slice_pitch), host_ptr, (*C.cl_int)(errcode_ret)))
 }
 
+//Deprecated OpenCL 1.1 APIs
+//see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clEnqueueMarker.html
 func EnqueueMarker(cq CommandQueue, event *Event) int32 {
 	return int32(C.clEnqueueMarker(cq, (*C.cl_event)(unsafe.Pointer(event))))
 }
 
+//Deprecated OpenCL 1.1 APIs
+//see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clEnqueueWaitForEvents.html
 func EnqueueWaitForEvents(cq CommandQueue, num_events uint32, event_list *Event) int32 {
 	return int32(C.clEnqueueWaitForEvents(cq, C.cl_uint(num_events), (*C.cl_event)(unsafe.Pointer(event_list))))
 }
 
+//Deprecated OpenCL 1.1 APIs
+//see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clEnqueueBarrier.html
 func EnqueueBarrier(cq CommandQueue) int32 {
 	return int32(C.clEnqueueBarrier(cq))
 }
 
+// see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/clUnloadCompiler.html
 func UnloadCompiler() int32 {
 	return int32(C.clUnloadCompiler())
 }
 
+// see https://www.khronos.org/registry/cl/sdk/1.1/docs/man/xhtml/.html
 func GetExtensionFunctionAddress(func_name *int8) unsafe.Pointer {
 	return unsafe.Pointer(C.clGetExtensionFunctionAddress((*C.char)(func_name)))
 }
