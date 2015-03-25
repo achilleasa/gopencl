@@ -12,6 +12,7 @@ package cl
 extern void contextErrorCallback(char *, void *, size_t, void *);
 extern void memObjectDestroyCallback(cl_mem,void*);
 extern void programObjectBuildCompleteCallback(cl_program, void*);
+extern void programObjectCompileCompleteCallback(cl_program, void*);
 */
 import "C"
 import (
@@ -21,6 +22,7 @@ import (
 func init() {
 	mochHolder = make(map[*memObjectCallbackHolder]struct{})
 	pobchHolder = make(map[*programObjectBuildCompleteHolder]struct{})
+	poccHolder = make(map[*programObjectCompileCompleteHolder]struct{})
 }
 
 const (
@@ -392,7 +394,7 @@ const (
 =======================================================Platform Api================================================
 =================================================================================================================*/
 
-type PlatformID uintptr
+type PlatformID C.cl_platform_id
 
 func GetPlatformIDs(numentries uint32, ids *PlatformID, numplatform *uint32) int32 {
 	return int32(C.clGetPlatformIDs(C.cl_uint(numentries), (*C.cl_platform_id)(unsafe.Pointer(ids)), (*C.cl_uint)(numplatform)))
@@ -400,32 +402,32 @@ func GetPlatformIDs(numentries uint32, ids *PlatformID, numplatform *uint32) int
 
 //paramName is one of [CL_PLATFORM_PROFILE,CL_PLATFORM_VERSION,CL_PLATFORM_NAME,CL_PLATFORM_VENDOR,CL_PLATFORM_EXTENSIONS]
 func GetPlatformInfo(pid PlatformID, paramName uint32, paramValueSize uint64, data unsafe.Pointer, paramValueSizeRet *uint64) int32 {
-	return int32(C.clGetPlatformInfo(C.cl_platform_id(unsafe.Pointer(pid)), C.cl_platform_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
+	return int32(C.clGetPlatformInfo(pid, C.cl_platform_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
 }
 
 /*=================================================================================================================
 ========================================================Device Api=================================================
 =================================================================================================================*/
 
-type DeviceId uintptr
+type DeviceId C.cl_device_id
 
 func GetDeviceIDs(pid PlatformID, deviceType uint64, numentries uint32, devices *DeviceId, numdevices *uint32) int32 {
-	return int32(C.clGetDeviceIDs(C.cl_platform_id(unsafe.Pointer(pid)), C.cl_device_type(deviceType), C.cl_uint(numentries), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.cl_uint)(numdevices)))
+	return int32(C.clGetDeviceIDs(pid, C.cl_device_type(deviceType), C.cl_uint(numentries), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.cl_uint)(numdevices)))
 }
 
 func GetDeviceInfo(did DeviceId, paramName uint32, paramValueSize uint64, data unsafe.Pointer, paramValueSizeRet *uint64) int32 {
-	return int32(C.clGetDeviceInfo(C.cl_device_id(unsafe.Pointer(did)), C.cl_device_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
+	return int32(C.clGetDeviceInfo(did, C.cl_device_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
 }
 
 //idk if properties is the right type
 func CreateSubDevices(did DeviceId, properties *uint64, numDevices uint32, devices *DeviceId, numDevicesRet *uint32) int32 {
-	return int32(C.clCreateSubDevices(C.cl_device_id(unsafe.Pointer(did)), (*C.cl_device_partition_property)(unsafe.Pointer(properties)), C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.cl_uint)(numDevicesRet)))
+	return int32(C.clCreateSubDevices(did, (*C.cl_device_partition_property)(unsafe.Pointer(properties)), C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.cl_uint)(numDevicesRet)))
 }
 func RetainDevice(did DeviceId) int32 {
-	return int32(C.clRetainDevice(C.cl_device_id(unsafe.Pointer(did))))
+	return int32(C.clRetainDevice(did))
 }
 func ReleaseDevice(did DeviceId) int32 {
-	return int32(C.clReleaseDevice(C.cl_device_id(unsafe.Pointer(did))))
+	return int32(C.clReleaseDevice(did))
 }
 
 /*=================================================================================================================
@@ -434,16 +436,19 @@ func ReleaseDevice(did DeviceId) int32 {
 
 type Context struct {
 	clContext   C.cl_context
-	errCallback func()
+	errCallback func(string, unsafe.Pointer, uint64, unsafe.Pointer)
 	userdata    interface{}
 }
 
 //export contextErrorCallback
-func contextErrorCallback(errinfo *C.char, privateinfo unsafe.Pointer, cb C.size_t, user_data unsafe.Pointer) {
+func contextErrorCallback(errinfo *C.char, privateinfo unsafe.Pointer, cb C.size_t, userData unsafe.Pointer) {
+	ctx := (*Context)(userData)
+	_ = ctx
+	//do something
 }
 
 //same issue as CreateSubDevices
-func CreateContext(properties *uint64, numDevices uint32, devices *DeviceId, errcb func(), userdata interface{}, errcode *int32) Context {
+func CreateContext(properties *uint64, numDevices uint32, devices *DeviceId, errcb func(string, unsafe.Pointer, uint64, unsafe.Pointer), userdata interface{}, errcode *int32) *Context {
 	ctx := Context{nil, errcb, userdata}
 	ctx.clContext = C.clCreateContext((*C.cl_context_properties)(unsafe.Pointer(properties)),
 		C.cl_uint(numDevices),
@@ -451,28 +456,32 @@ func CreateContext(properties *uint64, numDevices uint32, devices *DeviceId, err
 		(*[0]byte)(C.contextErrorCallback),
 		unsafe.Pointer(&ctx),
 		(*C.cl_int)(unsafe.Pointer(errcode)))
-	return ctx
+	return &ctx
 }
 
-func CreateContextFromType(properties *uint64, deviceType uint64, errcb func(), userdata interface{}, errcode *int32) Context {
+func CreateContextFromType(properties *uint64, deviceType uint64, errcb func(string, unsafe.Pointer, uint64, unsafe.Pointer), userdata interface{}, errcode *int32) *Context {
 	ctx := Context{nil, errcb, userdata}
+	var f *[0]byte
+	var u unsafe.Pointer
+	if errcb != nil {
+		f = (*[0]byte)(C.contextErrorCallback)
+		u = unsafe.Pointer(&ctx)
+	}
 	ctx.clContext = C.clCreateContextFromType((*C.cl_context_properties)(unsafe.Pointer(properties)),
-		C.cl_device_type(deviceType),
-		(*[0]byte)(C.contextErrorCallback),
-		unsafe.Pointer(&ctx),
+		C.cl_device_type(deviceType), f, u,
 		(*C.cl_int)(unsafe.Pointer(errcode)))
-	return ctx
+	return &ctx
 }
 
-func RetainContext(context Context) int32 {
+func RetainContext(context *Context) int32 {
 	return int32(C.clRetainContext(context.clContext))
 }
 
-func ReleaseContext(context Context) int32 {
+func ReleaseContext(context *Context) int32 {
 	return int32(C.clReleaseContext(context.clContext))
 }
 
-func GetContextInfo(context Context, paramName uint32, paramValueSize uint64, data unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+func GetContextInfo(context *Context, paramName uint32, paramValueSize uint64, data unsafe.Pointer, paramValueSizeRet *uint64) int32 {
 	return int32(C.clGetContextInfo(context.clContext, C.cl_context_info(paramName), C.size_t(paramValueSize), data, (*C.size_t)(paramValueSizeRet)))
 }
 
@@ -483,7 +492,7 @@ func GetContextInfo(context Context, paramName uint32, paramValueSize uint64, da
 type CommandQueue C.cl_command_queue
 
 func CreateCommandQueue(context Context, did DeviceId, properties uint64, errcode *int32) CommandQueue {
-	return CommandQueue(C.clCreateCommandQueue(context.clContext, C.cl_device_id(unsafe.Pointer(did)), C.cl_command_queue_properties(properties), (*C.cl_int)(errcode)))
+	return CommandQueue(C.clCreateCommandQueue(context.clContext, did, C.cl_command_queue_properties(properties), (*C.cl_int)(errcode)))
 }
 
 func RetainCommandQueue(cq CommandQueue) {
@@ -664,45 +673,510 @@ func BuildProgram(prog Program, numDevices uint32, devices *DeviceId, options *u
 	return int32(C.clBuildProgram(prog, C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.char)(unsafe.Pointer(options)), (*[0]byte)(C.programObjectBuildCompleteCallback), unsafe.Pointer(&pobch)))
 }
 
+type programObjectCompileCompleteHolder struct {
+	cbfunc   func(Program, interface{})
+	userData interface{}
+}
+
+var poccHolder map[*programObjectCompileCompleteHolder]struct{}
+
+//export programObjectCompileCompleteCallback
+func programObjectCompileCompleteCallback(prog C.cl_program, userData unsafe.Pointer) {
+	pocc := (*programObjectCompileCompleteHolder)(userData)
+	pocc.cbfunc(Program(prog), pocc.userData)
+	delete(poccHolder, pocc)
+}
+
+func clCompileProgram(prog Program, numDevices uint32, devices *DeviceId, options *uint8, numInputHeaders uint32, inputHeaders *Program, headerIncludeNames **uint8, notify func(Program, interface{}), userData interface{}) int32 {
+	var f *[0]byte
+	var u unsafe.Pointer
+	if notify != nil {
+		pocc := programObjectCompileCompleteHolder{notify, userData}
+		poccHolder[&pocc] = struct{}{}
+		f = (*[0]byte)(C.programObjectCompileCompleteCallback)
+		u = unsafe.Pointer(&pocc)
+	}
+	return int32(C.clCompileProgram(prog, C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.char)(unsafe.Pointer(options)), C.cl_uint(numInputHeaders), (*C.cl_program)(unsafe.Pointer(inputHeaders)), (**C.char)(unsafe.Pointer(headerIncludeNames)),
+		f,
+		u))
+}
+
+func LinkProgram(context Context, numDevices uint32, devices *DeviceId, options *uint8, numInputPrograms uint32, inputPrograms *Program, notify func(Program, interface{}), userData interface{}, errcode *int32) Program {
+	var f *[0]byte
+	var u unsafe.Pointer
+	if notify != nil {
+		pocc := programObjectCompileCompleteHolder{notify, userData}
+		poccHolder[&pocc] = struct{}{}
+		f = (*[0]byte)(C.programObjectCompileCompleteCallback)
+		u = unsafe.Pointer(&pocc)
+	}
+	return Program(C.clLinkProgram(context.clContext, C.cl_uint(numDevices), (*C.cl_device_id)(unsafe.Pointer(devices)), (*C.char)(unsafe.Pointer(options)), C.cl_uint(numInputPrograms), (*C.cl_program)(unsafe.Pointer(inputPrograms)), f, u, (*C.cl_int)(unsafe.Pointer(errcode))))
+}
+
+func UnloadPlatformCompiler(pid PlatformID) int32 {
+	return int32(C.clUnloadPlatformCompiler(pid))
+}
+
+func GetProgramInfo(prog Program, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetProgramInfo(prog, C.cl_program_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+func GetProgramBuildInfo(prog Program, device DeviceId, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetProgramBuildInfo(prog, device, C.cl_program_build_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+/*=================================================================================================================
+=====================================================Kernel Object Api=============================================
+=================================================================================================================*/
+
+type Kernel C.cl_kernel
+
+func CreateKernel(prog Program, kernelName *uint8, errcode *int32) Kernel {
+	return Kernel(C.clCreateKernel(prog, (*C.char)(unsafe.Pointer(kernelName)), (*C.cl_int)(unsafe.Pointer(errcode))))
+}
+
+func CreateKernelsInProgram(prog Program, numKernels uint32, kernels *Kernel, numKernelsRet *uint32) int32 {
+	return int32(C.clCreateKernelsInProgram(prog, C.cl_uint(numKernels), (*C.cl_kernel)(unsafe.Pointer(kernels)), (*C.cl_uint)(unsafe.Pointer(numKernelsRet))))
+}
+
+func RetainKernel(ker Kernel) int32 {
+	return int32(C.clRetainKernel(ker))
+}
+func ReleaseKernel(ker Kernel) int32 {
+	return int32(C.clReleaseKernel(ker))
+}
+
+func SetKernelArg(ker Kernel, argIndex uint32, argSize uint64, argValue unsafe.Pointer) int32 {
+	return int32(C.clSetKernelArg(ker, C.cl_uint(argIndex), C.size_t(argSize), argValue))
+}
+
+func GetKernelInfo(ker Kernel, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetKernelInfo(ker, C.cl_kernel_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+func GetKernelArgInfo(ker Kernel, argIndex uint32, kernelArgInfo uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetKernelArgInfo(ker, C.cl_uint(argIndex), C.cl_kernel_arg_info(kernelArgInfo), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+func GetKernelWorkGroupInfo(ker Kernel, did DeviceId, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetKernelWorkGroupInfo(ker, did, C.cl_kernel_work_group_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+/*=================================================================================================================
+======================================================Event Object Api=============================================
+=================================================================================================================*/
+
+type Event struct {
+	clEvent C.cl_event
+	cbFuncs []func()
+}
+
+func WaitForEvents(numEvents uint32, events *Event) int32 {
+	return int32(C.clWaitForEvents(C.cl_uint(numEvents), (*C.cl_event)(unsafe.Pointer(events))))
+}
+
+func GetEventInfo(e Event, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetEventInfo(e.clEvent, C.cl_event_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+func CreateUserEvent(context Context, errcode *int32) Event {
+	return Event{C.clCreateUserEvent(context.clContext, (*C.cl_int)(unsafe.Pointer(errcode))), make([]func(), 0)}
+}
+
+func RetainEvent(e Event) int32 {
+	return int32(C.clRetainEvent(e.clEvent))
+}
+func ReleaseEvent(e Event) int32 {
+	return int32(C.clReleaseEvent(e.clEvent))
+}
+
+func SetUserEventStatus(e Event, execStatus int32) int32 {
+	return int32(C.clSetUserEventStatus(e.clEvent, C.cl_int(execStatus)))
+}
+
+/*
+type eventCbHolder struct {
+	cbfunc   func()
+	userData interface{}
+}
+
+var ecbhHolder map[*eventCbHolder]struct{}
+
+//export eventCallbackCallback
+func eventCallbackCallback() {
+
+}
+
+//I say hey!, that doesn't woooork
+func SetEventCallback(e Event, commandExecCallbackType int32, notify func(Event, int32, interface{}), userData interface{}) int32 {
+	return int32(C.clSetEventCallback(e, C.cl_int(commandExecCallbackType), f))
+}*/
+
 var code = `
 extern CL_API_ENTRY cl_int CL_API_CALL
-clCompileProgram(cl_program           /* program */,
-                 cl_uint              /* num_devices */,
-                 const cl_device_id * /* device_list */,
-                 const char *         /* options */, 
-                 cl_uint              /* num_input_headers */,
-                 const cl_program *   /* input_headers */,
-                 const char **        /* header_include_names */,
-                 void (CL_CALLBACK *  /* pfn_notify */)(cl_program /* program */, void * /* user_data */),
-                 void *               /* user_data */) CL_API_SUFFIX__VERSION_1_2;
+clSetEventCallback( cl_event    /* event */,
+                    cl_int      /* command_exec_callback_type */,
+                    void (CL_CALLBACK * /* pfn_notify */)(cl_event, cl_int, void *),
+                    void *      /* user_data */) CL_API_SUFFIX__VERSION_1_1;
 
-extern CL_API_ENTRY cl_program CL_API_CALL
-clLinkProgram(cl_context           /* context */,
-              cl_uint              /* num_devices */,
-              const cl_device_id * /* device_list */,
-              const char *         /* options */, 
-              cl_uint              /* num_input_programs */,
-              const cl_program *   /* input_programs */,
-              void (CL_CALLBACK *  /* pfn_notify */)(cl_program /* program */, void * /* user_data */),
-              void *               /* user_data */,
-              cl_int *             /* errcode_ret */ ) CL_API_SUFFIX__VERSION_1_2;
+`
 
+/*=================================================================================================================
+======================================================Profiling Api=============================================
+=================================================================================================================*/
+
+func GetEventProfilingInfo(e Event, paramName uint32, paramValueSize uint64, paramValue unsafe.Pointer, paramValueSizeRet *uint64) int32 {
+	return int32(C.clGetEventProfilingInfo(e.clEvent, C.cl_profiling_info(paramName), C.size_t(paramValueSize), paramValue, (*C.size_t)(paramValueSizeRet)))
+}
+
+/*=================================================================================================================
+====================================================Flush and Finish Api===========================================
+=================================================================================================================*/
+
+func Flush(cq CommandQueue) int32 {
+	return int32(C.clFlush(cq))
+}
+func Finish(cq CommandQueue) int32 {
+	return int32(C.clFinish(cq))
+}
+
+/*=================================================================================================================
+=========================================================Enqueue Api===============================================
+=================================================================================================================*/
+
+func EnqueueReadBuffer(cq CommandQueue, buffer Mem, blocking_read uint32, offset uint64, size uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueReadBuffer(cq, buffer, C.cl_bool(blocking_read), C.size_t(offset), C.size_t(size), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueReadBufferRect(cq CommandQueue, buffer Mem, blocking_read uint32, buffer_offset *uint64, host_offset *uint64, region *uint64, buffer_row_pitch uint64, buffer_slice_pitch uint64, host_row_pitch uint64, host_slice_pitch uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueReadBufferRect(cq, buffer, C.cl_bool(blocking_read), (*C.size_t)(unsafe.Pointer(buffer_offset)), (*C.size_t)(unsafe.Pointer(host_offset)), (*C.size_t)(unsafe.Pointer(region)), C.size_t(buffer_row_pitch), C.size_t(buffer_slice_pitch), C.size_t(host_row_pitch), C.size_t(host_slice_pitch), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueWriteBuffer(cq CommandQueue, buffer Mem, blocking_write uint32, offset uint64, size uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueWriteBuffer(cq, buffer, C.cl_bool(blocking_write), C.size_t(offset), C.size_t(size), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueWriteBufferRect(cq CommandQueue, buffer Mem, blocking_write uint32, buffer_offset *uint64, host_offset *uint64, region *uint64, buffer_row_pitch uint64, buffer_slice_pitch uint64, host_row_pitch uint64, host_slice_pitch uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueWriteBufferRect(cq, buffer, C.cl_bool(blocking_write), (*C.size_t)(unsafe.Pointer(buffer_offset)), (*C.size_t)(unsafe.Pointer(host_offset)), (*C.size_t)(unsafe.Pointer(region)), C.size_t(buffer_row_pitch), C.size_t(buffer_slice_pitch), C.size_t(host_row_pitch), C.size_t(host_slice_pitch), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueFillBuffer(cq CommandQueue, buffer Mem, pattern unsafe.Pointer, pattern_size uint64, offset uint64, size uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueFillBuffer(cq, buffer, unsafe.Pointer(pattern), C.size_t(pattern_size), C.size_t(offset), C.size_t(size), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueCopyBuffer(cq CommandQueue, src_buffer Mem, dst_buffer Mem, src_offset uint64, dst_offset uint64, size uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueCopyBuffer(cq, src_buffer, dst_buffer, C.size_t(src_offset), C.size_t(dst_offset), C.size_t(size), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueCopyBufferRect(cq CommandQueue, src_buffer Mem, dst_buffer Mem, src_origin *uint64, dst_origin *uint64, region *uint64, src_row_pitch uint64, src_slice_pitch uint64, dst_row_pitch uint64, dst_slice_pitch uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueCopyBufferRect(cq, src_buffer, dst_buffer, (*C.size_t)(unsafe.Pointer(src_origin)), (*C.size_t)(unsafe.Pointer(dst_origin)), (*C.size_t)(unsafe.Pointer(region)), C.size_t(src_row_pitch), C.size_t(src_slice_pitch), C.size_t(dst_row_pitch), C.size_t(dst_slice_pitch), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueReadImage(cq CommandQueue, image Mem, blocking_read uint32, origin3 *uint64, region3 *uint64, row_pitch uint64, slice_pitch uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueReadImage(cq, image, C.cl_bool(blocking_read), (*C.size_t)(unsafe.Pointer(origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.size_t(row_pitch), C.size_t(slice_pitch), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueWriteImage(cq CommandQueue, image Mem, blocking_write uint32, origin3 *uint64, region3 *uint64, input_row_pitch uint64, input_slice_pitch uint64, ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueWriteImage(cq, image, C.cl_bool(blocking_write), (*C.size_t)(unsafe.Pointer(origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.size_t(input_row_pitch), C.size_t(input_slice_pitch), unsafe.Pointer(ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueFillImage(cq CommandQueue, image Mem, fill_color unsafe.Pointer, origin3 *uint64, region3 *uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueFillImage(cq, image, unsafe.Pointer(fill_color), (*C.size_t)(unsafe.Pointer(origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueCopyImage(cq CommandQueue, src_image Mem, dst_image Mem, src_origin3 *uint64, dst_origin3 *uint64, region3 *uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueCopyImage(cq, src_image, dst_image, (*C.size_t)(unsafe.Pointer(src_origin3)), (*C.size_t)(unsafe.Pointer(dst_origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueCopyImageToBuffer(cq CommandQueue, src_image Mem, dst_buffer Mem, src_origin3 *uint64, region3 *uint64, dst_offset uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueCopyImageToBuffer(cq, src_image, dst_buffer, (*C.size_t)(unsafe.Pointer(src_origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.size_t(dst_offset), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueCopyBufferToImage(cq CommandQueue, src_buffer Mem, dst_image Mem, src_offset uint64, dst_origin3 *uint64, region3 *uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueCopyBufferToImage(cq, src_buffer, dst_image, C.size_t(src_offset), (*C.size_t)(unsafe.Pointer(dst_origin3)), (*C.size_t)(unsafe.Pointer(region3)), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueMapBuffer(cq CommandQueue, buffer Mem, blocking_map uint32, map_flags uint64, offset uint64, size uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event, errcode_ret *int32) unsafe.Pointer {
+	return unsafe.Pointer(C.clEnqueueMapBuffer(cq, buffer, C.cl_bool(blocking_map), C.cl_map_flags(map_flags), C.size_t(offset), C.size_t(size), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event)), (*C.cl_int)(unsafe.Pointer(errcode_ret))))
+}
+
+func EnqueueMapImage(cq CommandQueue, image Mem, blocking_map uint32, map_flags uint64, origin3 *uint64, region3 *uint64, image_row_pitch *uint64, image_slice_pitch *uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event, errcode_ret *int32) unsafe.Pointer {
+	return unsafe.Pointer(C.clEnqueueMapImage(cq, image, C.cl_bool(blocking_map), C.cl_map_flags(map_flags), (*C.size_t)(unsafe.Pointer(origin3)), (*C.size_t)(unsafe.Pointer(region3)), (*C.size_t)(unsafe.Pointer(image_row_pitch)), (*C.size_t)(unsafe.Pointer(image_slice_pitch)), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event)), (*C.cl_int)(unsafe.Pointer(errcode_ret))))
+}
+
+func EnqueueUnmapMemObject(cq CommandQueue, memobj Mem, mapped_ptr unsafe.Pointer, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueUnmapMemObject(cq, memobj, unsafe.Pointer(mapped_ptr), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueMigrateMemObjects(cq CommandQueue, num_mem_objects uint32, mem_objects *Mem, flags uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueMigrateMemObjects(cq, C.cl_uint(num_mem_objects), (*C.cl_mem)(unsafe.Pointer(mem_objects)), C.cl_mem_migration_flags(flags), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueNDRangeKernel(cq CommandQueue, kernel Kernel, work_dim uint32, global_work_offset *uint64, global_work_size *uint64, local_work_size *uint64, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueNDRangeKernel(cq, C.cl_kernel(kernel), C.cl_uint(work_dim), (*C.size_t)(unsafe.Pointer(global_work_offset)), (*C.size_t)(unsafe.Pointer(global_work_size)), (*C.size_t)(unsafe.Pointer(local_work_size)), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueTask(cq CommandQueue, kernel Kernel, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueTask(cq, C.cl_kernel(kernel), C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+/*
+func EnqueueNativeKernel(cq CommandQueue ,userfunc func(),args unsafe.Pointer,cb_args uint64, num_mem_objects uint32 ,mem_list *Mem , args_mem_loc unsafe.Pointer ,num_events_in_wait_list uint32 ,event_wait_list *Event , event *Event) int32{
+	return int32(C.clEnqueueNativeKernel(cq,userfunc,unsafe.Pointer(args),C.size_t(cb_args),C.cl_uint(num_mem_objects),(*C.cl_mem)(unsafe.Pointer(mem_list)),args_mem_loc,C.cl_uint(num_events_in_wait_list),(*C.cl_event)(unsafe.Pointer(event_wait_list)),(*C.cl_event)(unsafe.Pointer(event))))
+}
+*/
+func EnqueueMarkerWithWaitList(cq CommandQueue, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueMarkerWithWaitList(cq, C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+func EnqueueBarrierWithWaitList(cq CommandQueue, num_events_in_wait_list uint32, event_wait_list *Event, event *Event) int32 {
+	return int32(C.clEnqueueBarrierWithWaitList(cq, C.cl_uint(num_events_in_wait_list), (*C.cl_event)(unsafe.Pointer(event_wait_list)), (*C.cl_event)(unsafe.Pointer(event))))
+}
+
+var code2 = `
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueReadBuffer(cl_command_queue    /* command_queue */,
+                    cl_mem              /* buffer */,
+                    cl_bool             /* blocking_read */,
+                    size_t              /* offset */,
+                    size_t              /* size */, 
+                    void *              /* ptr */,
+                    cl_uint             /* num_events_in_wait_list */,
+                    const cl_event *    /* event_wait_list */,
+                    cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_0;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueReadBufferRect(cl_command_queue    /* command_queue */,
+                        cl_mem              /* buffer */,
+                        cl_bool             /* blocking_read */,
+                        const size_t *      /* buffer_offset */,
+                        const size_t *      /* host_offset */, 
+                        const size_t *      /* region */,
+                        size_t              /* buffer_row_pitch */,
+                        size_t              /* buffer_slice_pitch */,
+                        size_t              /* host_row_pitch */,
+                        size_t              /* host_slice_pitch */,                        
+                        void *              /* ptr */,
+                        cl_uint             /* num_events_in_wait_list */,
+                        const cl_event *    /* event_wait_list */,
+                        cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_1;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueWriteBuffer(cl_command_queue   /* command_queue */, 
+                     cl_mem             /* buffer */, 
+                     cl_bool            /* blocking_write */, 
+                     size_t             /* offset */, 
+                     size_t             /* size */, 
+                     const void *       /* ptr */, 
+                     cl_uint            /* num_events_in_wait_list */, 
+                     const cl_event *   /* event_wait_list */, 
+                     cl_event *         /* event */) CL_API_SUFFIX__VERSION_1_0;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueWriteBufferRect(cl_command_queue    /* command_queue */,
+                         cl_mem              /* buffer */,
+                         cl_bool             /* blocking_write */,
+                         const size_t *      /* buffer_offset */,
+                         const size_t *      /* host_offset */, 
+                         const size_t *      /* region */,
+                         size_t              /* buffer_row_pitch */,
+                         size_t              /* buffer_slice_pitch */,
+                         size_t              /* host_row_pitch */,
+                         size_t              /* host_slice_pitch */,                        
+                         const void *        /* ptr */,
+                         cl_uint             /* num_events_in_wait_list */,
+                         const cl_event *    /* event_wait_list */,
+                         cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_1;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueFillBuffer(cl_command_queue   /* command_queue */,
+                    cl_mem             /* buffer */, 
+                    const void *       /* pattern */, 
+                    size_t             /* pattern_size */, 
+                    size_t             /* offset */, 
+                    size_t             /* size */, 
+                    cl_uint            /* num_events_in_wait_list */, 
+                    const cl_event *   /* event_wait_list */, 
+                    cl_event *         /* event */) CL_API_SUFFIX__VERSION_1_2;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueCopyBuffer(cl_command_queue    /* command_queue */, 
+                    cl_mem              /* src_buffer */,
+                    cl_mem              /* dst_buffer */, 
+                    size_t              /* src_offset */,
+                    size_t              /* dst_offset */,
+                    size_t              /* size */, 
+                    cl_uint             /* num_events_in_wait_list */,
+                    const cl_event *    /* event_wait_list */,
+                    cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_0;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueCopyBufferRect(cl_command_queue    /* command_queue */, 
+                        cl_mem              /* src_buffer */,
+                        cl_mem              /* dst_buffer */, 
+                        const size_t *      /* src_origin */,
+                        const size_t *      /* dst_origin */,
+                        const size_t *      /* region */, 
+                        size_t              /* src_row_pitch */,
+                        size_t              /* src_slice_pitch */,
+                        size_t              /* dst_row_pitch */,
+                        size_t              /* dst_slice_pitch */,
+                        cl_uint             /* num_events_in_wait_list */,
+                        const cl_event *    /* event_wait_list */,
+                        cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_1;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueReadImage(cl_command_queue     /* command_queue */,
+                   cl_mem               /* image */,
+                   cl_bool              /* blocking_read */, 
+                   const size_t *       /* origin[3] */,
+                   const size_t *       /* region[3] */,
+                   size_t               /* row_pitch */,
+                   size_t               /* slice_pitch */, 
+                   void *               /* ptr */,
+                   cl_uint              /* num_events_in_wait_list */,
+                   const cl_event *     /* event_wait_list */,
+                   cl_event *           /* event */) CL_API_SUFFIX__VERSION_1_0;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clUnloadPlatformCompiler(cl_platform_id /* platform */) CL_API_SUFFIX__VERSION_1_2;
+clEnqueueWriteImage(cl_command_queue    /* command_queue */,
+                    cl_mem              /* image */,
+                    cl_bool             /* blocking_write */, 
+                    const size_t *      /* origin[3] */,
+                    const size_t *      /* region[3] */,
+                    size_t              /* input_row_pitch */,
+                    size_t              /* input_slice_pitch */, 
+                    const void *        /* ptr */,
+                    cl_uint             /* num_events_in_wait_list */,
+                    const cl_event *    /* event_wait_list */,
+                    cl_event *          /* event */) CL_API_SUFFIX__VERSION_1_0;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clGetProgramInfo(cl_program         /* program */,
-                 cl_program_info    /* param_name */,
-                 size_t             /* param_value_size */,
-                 void *             /* param_value */,
-                 size_t *           /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0;
+clEnqueueFillImage(cl_command_queue   /* command_queue */,
+                   cl_mem             /* image */, 
+                   const void *       /* fill_color */, 
+                   const size_t *     /* origin[3] */, 
+                   const size_t *     /* region[3] */, 
+                   cl_uint            /* num_events_in_wait_list */, 
+                   const cl_event *   /* event_wait_list */, 
+                   cl_event *         /* event */) CL_API_SUFFIX__VERSION_1_2;
+                            
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueCopyImage(cl_command_queue     /* command_queue */,
+                   cl_mem               /* src_image */,
+                   cl_mem               /* dst_image */, 
+                   const size_t *       /* src_origin[3] */,
+                   const size_t *       /* dst_origin[3] */,
+                   const size_t *       /* region[3] */, 
+                   cl_uint              /* num_events_in_wait_list */,
+                   const cl_event *     /* event_wait_list */,
+                   cl_event *           /* event */) CL_API_SUFFIX__VERSION_1_0;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clGetProgramBuildInfo(cl_program            /* program */,
-                      cl_device_id          /* device */,
-                      cl_program_build_info /* param_name */,
-                      size_t                /* param_value_size */,
-                      void *                /* param_value */,
-                      size_t *              /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0;                 
+clEnqueueCopyImageToBuffer(cl_command_queue /* command_queue */,
+                           cl_mem           /* src_image */,
+                           cl_mem           /* dst_buffer */, 
+                           const size_t *   /* src_origin[3] */,
+                           const size_t *   /* region[3] */, 
+                           size_t           /* dst_offset */,
+                           cl_uint          /* num_events_in_wait_list */,
+                           const cl_event * /* event_wait_list */,
+                           cl_event *       /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueCopyBufferToImage(cl_command_queue /* command_queue */,
+                           cl_mem           /* src_buffer */,
+                           cl_mem           /* dst_image */, 
+                           size_t           /* src_offset */,
+                           const size_t *   /* dst_origin[3] */,
+                           const size_t *   /* region[3] */, 
+                           cl_uint          /* num_events_in_wait_list */,
+                           const cl_event * /* event_wait_list */,
+                           cl_event *       /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY void * CL_API_CALL
+clEnqueueMapBuffer(cl_command_queue /* command_queue */,
+                   cl_mem           /* buffer */,
+                   cl_bool          /* blocking_map */, 
+                   cl_map_flags     /* map_flags */,
+                   size_t           /* offset */,
+                   size_t           /* size */,
+                   cl_uint          /* num_events_in_wait_list */,
+                   const cl_event * /* event_wait_list */,
+                   cl_event *       /* event */,
+                   cl_int *         /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY void * CL_API_CALL
+clEnqueueMapImage(cl_command_queue  /* command_queue */,
+                  cl_mem            /* image */, 
+                  cl_bool           /* blocking_map */, 
+                  cl_map_flags      /* map_flags */, 
+                  const size_t *    /* origin[3] */,
+                  const size_t *    /* region[3] */,
+                  size_t *          /* image_row_pitch */,
+                  size_t *          /* image_slice_pitch */,
+                  cl_uint           /* num_events_in_wait_list */,
+                  const cl_event *  /* event_wait_list */,
+                  cl_event *        /* event */,
+                  cl_int *          /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueUnmapMemObject(cl_command_queue /* command_queue */,
+                        cl_mem           /* memobj */,
+                        void *           /* mapped_ptr */,
+                        cl_uint          /* num_events_in_wait_list */,
+                        const cl_event *  /* event_wait_list */,
+                        cl_event *        /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueMigrateMemObjects(cl_command_queue       /* command_queue */,
+                           cl_uint                /* num_mem_objects */,
+                           const cl_mem *         /* mem_objects */,
+                           cl_mem_migration_flags /* flags */,
+                           cl_uint                /* num_events_in_wait_list */,
+                           const cl_event *       /* event_wait_list */,
+                           cl_event *             /* event */) CL_API_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
+                       cl_kernel        /* kernel */,
+                       cl_uint          /* work_dim */,
+                       const size_t *   /* global_work_offset */,
+                       const size_t *   /* global_work_size */,
+                       const size_t *   /* local_work_size */,
+                       cl_uint          /* num_events_in_wait_list */,
+                       const cl_event * /* event_wait_list */,
+                       cl_event *       /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueTask(cl_command_queue  /* command_queue */,
+              cl_kernel         /* kernel */,
+              cl_uint           /* num_events_in_wait_list */,
+              const cl_event *  /* event_wait_list */,
+              cl_event *        /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueNativeKernel(cl_command_queue  /* command_queue */,
+					  void (CL_CALLBACK * /*user_func*/)(void *), 
+                      void *            /* args */,
+                      size_t            /* cb_args */, 
+                      cl_uint           /* num_mem_objects */,
+                      const cl_mem *    /* mem_list */,
+                      const void **     /* args_mem_loc */,
+                      cl_uint           /* num_events_in_wait_list */,
+                      const cl_event *  /* event_wait_list */,
+                      cl_event *        /* event */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueMarkerWithWaitList(cl_command_queue /* command_queue */,
+                            cl_uint           /* num_events_in_wait_list */,
+                            const cl_event *  /* event_wait_list */,
+                            cl_event *        /* event */) CL_API_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueBarrierWithWaitList(cl_command_queue /* command_queue */,
+                             cl_uint           /* num_events_in_wait_list */,
+                             const cl_event *  /* event_wait_list */,
+                             cl_event *        /* event */) CL_API_SUFFIX__VERSION_1_2;
+
 `
